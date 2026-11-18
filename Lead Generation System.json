@@ -1,0 +1,332 @@
+{
+  "name": "Lead Generation System",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        16
+      ],
+      "id": "cfdfdd60-53e5-4e51-86be-f9dbeeeccf87",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6df4406e-d339-428d-a7d3-5d2edb9fca7f",
+              "name": "query",
+              "value": "dentist in UAE",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -368,
+        16
+      ],
+      "id": "8db1932f-095c-4238-8172-132fa9d3274b",
+      "name": "Search query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/maps",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"={{ $json.query }}\",\n  \"page\": \"={{ $json.page }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        80,
+        16
+      ],
+      "id": "4568904b-5604-4c8f-9521-8725b4c9a9de",
+      "name": "Search Google Maps",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "c98u2VoZQyBEoPpw",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const places = $json.places || [];\n\nreturn places\n  .filter(place => place.website)\n  .map(place => ({\n    json: {\n      name: place.title || '',\n      phone: place.phoneNumber || '',\n      website: place.website || '',\n      address: place.address || '',\n      rating: place.rating || '',\n      ratingCount: place.ratingCount || '',\n      type: place.type || ''\n    }\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        16
+      ],
+      "id": "571b617f-9a6b-485c-855c-17b57a12fd42",
+      "name": "Format Business Data"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.website}}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        16
+      ],
+      "id": "a77893f4-5b2c-4bcb-89f3-3f22142d00c7",
+      "name": "Scrape Website",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = JSON.stringify($json);\nconst emails = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g) || [];\n\nconst uniqueEmails = [...new Set(\n  emails\n    .map(email => email.toLowerCase().trim())\n    .filter(email => !email.includes('example.com'))\n    .filter(email => !email.includes('sentry'))\n    .filter(email => !email.includes('wixpress'))\n    .filter(email => !email.includes('localhost'))\n)];\n\nreturn {\n  ...$('Format Business Data').item.json,\n  email: uniqueEmails[0] || ''\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        16
+      ],
+      "id": "a7da0f5e-fe3a-491d-b889-58255e7fd52b",
+      "name": "Extract Emails"
+    },
+    {
+      "parameters": {
+        "jsCode": "const pages = [1, 2, 3];\n\nreturn pages.map(page => ({\n  json: {\n    query: $json.query,\n    page\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        16
+      ],
+      "id": "8b40c47b-5101-444e-965e-1b1307c99066",
+      "name": "Generate Pages"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GzMRdFLKIS4GTIf9Og03UV1XichmNIpNA0ntzjxy7M4",
+          "mode": "list",
+          "cachedResultName": "Scraper",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GzMRdFLKIS4GTIf9Og03UV1XichmNIpNA0ntzjxy7M4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GzMRdFLKIS4GTIf9Og03UV1XichmNIpNA0ntzjxy7M4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "Email": "={{ $json.email }}",
+            "Website": "={{ $json.website }}",
+            "phone": "={{ $json.phone }}",
+            "Address": "={{ $json.address }}",
+            "Rating": "={{ $json.rating }}",
+            "Rating Count": "={{ $json.ratingCount }}",
+            "Business Type": "={{ $json.type }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rating",
+              "displayName": "Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rating Count",
+              "displayName": "Rating Count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Business Type",
+              "displayName": "Business Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        16
+      ],
+      "id": "59bcad37-9407-487c-b6ab-f0f64f6d43c7",
+      "name": "Google Sheet"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search query": {
+      "main": [
+        [
+          {
+            "node": "Generate Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google Maps": {
+      "main": [
+        [
+          {
+            "node": "Format Business Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Business Data": {
+      "main": [
+        [
+          {
+            "node": "Scrape Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Website": {
+      "main": [
+        [
+          {
+            "node": "Extract Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Emails": {
+      "main": [
+        [
+          {
+            "node": "Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Pages": {
+      "main": [
+        [
+          {
+            "node": "Search Google Maps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ad87a3c4-d9a9-4e15-a676-ba1905e8919d",
+  "meta": {
+    "instanceId": "880bf2e9de58fdab1c03ca90f4c17caa5da9fd1c21c1f30e683e87845e2f9265"
+  },
+  "nodeGroups": [],
+  "id": "GyrIPTgsQ19hig9D",
+  "tags": []
+}
